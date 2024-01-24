@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-func Get_extension(URL_PATH string) string {
+func Get_filename(URL_PATH string) string {
 	// Get the file extension from the URL
 	//ext := filepath.Ext(URL_PATH)
 

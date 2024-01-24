@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,11 +12,11 @@ import (
 )
 
 func main() {
-	// Parse Args
-
-	args := os.Args[1:]
-	URL_PATH := args[0]
-
+	// Get flags
+	output_name_arg_flag := flag.String("out", "", "a string")
+	flag.Parse()
+	// Parse Args after all flags usually it is the URL_PATH
+	URL_PATH := flag.Args()[0]
 	response, err := http.Get(URL_PATH)
 	if err != nil {
 		fmt.Println("error")
@@ -25,20 +26,17 @@ func main() {
 
 	defer response.Body.Close()
 
+	fmt.Println("Output_name: ", *output_name_arg_flag)
+	fmt.Println(flag.Args())
+
+	// Get fileName
 	var fileName string
-
-	// // Get flags
-	// Output_name_arg_flag := flag.String("O", "foo", "a string")
-	// flag.Parse()
-	//
-	// fmt.Println("Output_name: ", *Output_name_arg_flag)
-
-	// Get path_extension for the file name
-	path_extension := helpers.Get_extension(URL_PATH)
-	if path_extension == "" {
-		fileName = "index.html"
+	if *output_name_arg_flag != "" {
+		fileName = *output_name_arg_flag
+	} else if helpers.Get_filename(URL_PATH) != "" {
+		fileName = helpers.Get_filename(URL_PATH)
 	} else {
-		fileName = path_extension
+		fileName = "index.html"
 	}
 
 	// Create file
@@ -57,5 +55,5 @@ func main() {
 		return
 	}
 
-	fmt.Println("HTML content saved to", fileName)
+	fmt.Println("Contents saved to", fileName)
 }

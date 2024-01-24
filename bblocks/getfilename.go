@@ -1,4 +1,4 @@
-package helpers
+package bblocks
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ func Get_filename(URL_PATH string) string {
 		fileName = matches[1]
 		fmt.Println("File Name:", fileName)
 	} else {
-		fmt.Println("No match found.")
+		return ""
 	}
 
 	return fileName

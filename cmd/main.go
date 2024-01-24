@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+	//Print start time
+	bblocks.DisplayDate(true)
 	// Get flags
 	output_name_arg_flag := flag.String("O", "", "Output file name")
 	// background_flag := flag.String("B", "", "Run in background")
@@ -14,5 +16,6 @@ func main() {
 	// Parse Args after all flags usually it is the URL_PATH
 	URL_PATH := flag.Args()[0]
 
-	bblocks.DownloadFile(URL_PATH, *output_name_arg_flag)
+	bblocks.DownloadFile(URL_PATH, *output_name_arg_flag, false)
+	bblocks.DisplayDate(false)
 }

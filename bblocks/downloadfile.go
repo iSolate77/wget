@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/schollz/progressbar/v3"
 )
@@ -14,7 +15,11 @@ import (
 var outputFunc func(a ...any) (n int, e error)
 
 // A function to download a file
-func DownloadFile(URL_PATH string, File_name string) {
+func DownloadFile(URL_PATH string, File_name string, wg *sync.WaitGroup) {
+	// check if wg is there
+	if wg != nil {
+		defer wg.Done()
+	}
 	if *SilentMode {
 		outputFunc = WriteToWgetLog
 	} else {
@@ -63,10 +68,14 @@ func DownloadFile(URL_PATH string, File_name string) {
 
 	// fmt.Println(resp.Header.Get("Content-Type"))
 
-	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-		output_fileName = "index.html"
+	if *Output_name_arg_flag != "" {
+		output_fileName = *Output_name_arg_flag
 	} else {
-		output_fileName = default_fileName
+		if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+			output_fileName = "index.html"
+		} else {
+			output_fileName = default_fileName
+		}
 	}
 
 	outputFunc("saving file to:" + output_fileName + "\n")

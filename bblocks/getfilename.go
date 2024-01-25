@@ -1,13 +1,12 @@
 package bblocks
 
 import (
-	"fmt"
 	"regexp"
 )
 
 func Get_filename(URL_PATH string) string {
 	// Get the file extension from the URL
-	//ext := filepath.Ext(URL_PATH)
+	// ext := filepath.Ext(URL_PATH)
 
 	// Define the regular expression to capture the file name
 	re := regexp.MustCompile(`\/([^\/]+)$`)
@@ -18,7 +17,7 @@ func Get_filename(URL_PATH string) string {
 	// Extract the file name
 	if len(matches) >= 2 {
 		fileName = matches[1]
-		fmt.Println("File Name:", fileName)
+		// outputFunc("File Name: " + fileName + "\n")
 	} else {
 		return ""
 	}

@@ -5,36 +5,47 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/schollz/progressbar/v3"
 )
 
+var outputFunc func(a ...any) (n int, e error)
+
 // A function to download a file
-func DownloadFile(URL_PATH string, File_name string, background bool) {
+func DownloadFile(URL_PATH string, File_name string) {
+	if *SilentMode {
+		outputFunc = WriteToWgetLog
+	} else {
+		outputFunc = fmt.Print
+	}
+
+	DisplayDate(true)
 
 	req, err := http.NewRequest("GET", URL_PATH, nil)
 	if err != nil {
-		fmt.Println("error")
+		outputFunc("error")
 		return
 	}
 
 	// Print what are you DOING!!!
-	fmt.Printf("sending request, awaiting response... ")
+	outputFunc("sending request, awaiting response... \n")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("error")
+		outputFunc("error" + "\n")
 		return
 	}
 
 	// print status
-	fmt.Printf("status %s\n", resp.Status)
+	outputFunc("status " + resp.Status + "\n")
 	if resp.StatusCode != 200 {
-		fmt.Println("error")
+		outputFunc("error" + "\n")
 		return
 	}
 
 	// Print contnet size
-	fmt.Printf("content size: %s\n", RoundBytes(resp.ContentLength))
+	outputFunc("Content-Size: " + strconv.Itoa(int(resp.ContentLength)) + "\n")
 	defer resp.Body.Close()
 
 	// Get fileName
@@ -42,39 +53,49 @@ func DownloadFile(URL_PATH string, File_name string, background bool) {
 	var output_fileName string
 
 	// Choosing output_fileName
-	if File_name != "" {
-		output_fileName = File_name
-	} else if default_fileName != "" {
-		output_fileName = default_fileName
+	// if File_name != "" {
+	// 	output_fileName = File_name
+	// } else if default_fileName != "" {
+	// 	output_fileName = default_fileName
+	// } else {
+	// 	output_fileName = "./index.html"
+	// }
+
+	// fmt.Println(resp.Header.Get("Content-Type"))
+
+	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+		output_fileName = "index.html"
 	} else {
-		output_fileName = "./index.html"
+		output_fileName = default_fileName
 	}
 
-	fmt.Println("saving file to:", output_fileName)
+	outputFunc("saving file to:" + output_fileName + "\n")
 	write_to_file(output_fileName, resp)
-
+	DisplayDate(false)
 }
 
 func write_to_file(output_fileName string, resp *http.Response) {
 	// Create file
 	file, err := os.Create(output_fileName)
 	if err != nil {
-		fmt.Println("Error creating file:", err)
+		outputFunc("Error creating file:", err)
 		return
 	}
 	defer file.Close()
 
-	bar := progressbar.DefaultBytes(
-		resp.ContentLength,
-		"downloading",
-	)
-
 	// Write to file
 	// writer := bufio.NewWriter(file)
-	_, err = io.Copy(io.MultiWriter(file, bar), resp.Body)
+	if *SilentMode {
+		_, err = io.Copy(file, resp.Body)
+	} else {
+		bar := progressbar.DefaultBytes(
+			resp.ContentLength,
+			"downloading",
+		)
+		_, err = io.Copy(io.MultiWriter(file, bar), resp.Body)
+	}
 	if err != nil {
-		fmt.Println("Error copying content to file:", err)
+		outputFunc("Error copying content to file:", err)
 		return
 	}
-
 }

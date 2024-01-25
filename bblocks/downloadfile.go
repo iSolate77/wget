@@ -5,9 +5,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/schollz/progressbar/v3"
 )
@@ -16,9 +18,13 @@ var outputFunc func(a ...any) (n int, e error)
 
 // A function to download a file
 func DownloadFile(URL_PATH string, File_name string, wg *sync.WaitGroup) {
-	// check if wg is there
 	if wg != nil {
 		defer wg.Done()
+	}
+	if *SilentMode {
+		outputFunc = WriteToWgetLog
+	} else {
+		outputFunc = fmt.Print
 	}
 	if *SilentMode {
 		outputFunc = WriteToWgetLog
@@ -56,18 +62,6 @@ func DownloadFile(URL_PATH string, File_name string, wg *sync.WaitGroup) {
 	// Get fileName
 	default_fileName := Get_filename(URL_PATH)
 	var output_fileName string
-
-	// Choosing output_fileName
-	// if File_name != "" {
-	// 	output_fileName = File_name
-	// } else if default_fileName != "" {
-	// 	output_fileName = default_fileName
-	// } else {
-	// 	output_fileName = "./index.html"
-	// }
-
-	// fmt.Println(resp.Header.Get("Content-Type"))
-
 	if *Output_name_arg_flag != "" {
 		output_fileName = *Output_name_arg_flag
 	} else {
@@ -76,35 +70,50 @@ func DownloadFile(URL_PATH string, File_name string, wg *sync.WaitGroup) {
 		} else {
 			output_fileName = default_fileName
 		}
-	}
 
-	outputFunc("saving file to:" + output_fileName + "\n")
+	}
+	if *New_file_path != "" {
+		cleanedPath := filepath.Clean(*New_file_path)
+		homeDir, _ := os.UserHomeDir()
+		FilePath = filepath.Join(homeDir, cleanedPath[1:], output_fileName)
+		*New_file_path = FilePath
+		outputFunc("saving file to:" + FilePath + "\n")
+	} else {
+		outputFunc("saving file to:" + output_fileName + "\n")
+	}
 	write_to_file(output_fileName, resp)
 	DisplayDate(false)
 }
 
 func write_to_file(output_fileName string, resp *http.Response) {
 	// Create file
-	file, err := os.Create(output_fileName)
-	if err != nil {
-		outputFunc("Error creating file:", err)
+	if *New_file_path != "" {
+		// File, Any_error = os.Create(*New_file_path + output_fileName)
+		File, Any_error = os.Create(*New_file_path)
+	} else {
+		File, Any_error = os.Create(output_fileName)
+	}
+	if Any_error != nil {
+		outputFunc("Error creating file:", Any_error)
 		return
 	}
-	defer file.Close()
+	defer File.Close()
+
+	time.Sleep(time.Second)
 
 	// Write to file
 	// writer := bufio.NewWriter(file)
 	if *SilentMode {
-		_, err = io.Copy(file, resp.Body)
+		_, Any_error = io.Copy(File, resp.Body)
 	} else {
 		bar := progressbar.DefaultBytes(
 			resp.ContentLength,
 			"downloading",
 		)
-		_, err = io.Copy(io.MultiWriter(file, bar), resp.Body)
+		_, Any_error = io.Copy(io.MultiWriter(File, bar), resp.Body)
 	}
-	if err != nil {
-		outputFunc("Error copying content to file:", err)
+	if Any_error != nil {
+		outputFunc("Error copying content to file:", Any_error)
 		return
 	}
 }

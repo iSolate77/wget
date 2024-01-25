@@ -9,6 +9,10 @@ import (
 var (
 	SilentMode = flag.Bool("B", false, "Silent Mode")
 	LogFile, _ = os.Create("wget-log.txt")
-	AsyncFileInput = flag.String("i", "", "Async file download from input txt source")
 	Output_name_arg_flag = flag.String("O", "", "Output file name")
+	New_file_path = flag.String("P", "", "File path")
+	File *os.File
+	Any_error error
+	FilePath string
+	AsyncFileInput = flag.String("i", "", "Async file download from input txt source")
 )

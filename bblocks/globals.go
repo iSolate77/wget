@@ -8,6 +8,7 @@ import (
 
 var (
 	SilentMode = flag.Bool("B", false, "Silent Mode")
+	MirrorMode = flag.Bool("mirror",false,"Mirror Website")
 	LogFile, _ = os.Create("wget-log.txt")
 	Output_name_arg_flag = flag.String("O", "", "Output file name")
 	New_file_path = flag.String("P", "", "File path")

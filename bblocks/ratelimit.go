@@ -5,13 +5,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
-
-	"github.com/schollz/progressbar/v3"
 )
 
 const (
@@ -61,103 +56,32 @@ func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) err
 	if totalSize < 0 {
 		outputFunc("Length: unspecified [text/html]\n")
 	} else {
-		outputFunc("Content-Length: " + strconv.FormatInt(totalSize, 10) + " ("+FormatSize(totalSize)+")" + "\n")
+		outputFunc("Content-Length: " + strconv.FormatInt(totalSize, 10) + " (" + FormatSize(totalSize) + ")" + "\n")
 	}
 
-	outputFileName := determineOutputFileName(resp, url)
-	filePath := determineFilePath(outputFileName)
+	outputFileName := DetermineOutputFileName(resp, url)
+	filePath := DetermineFilePath(outputFileName)
 	outputFunc("saving file to:" + filePath + "\n")
 
-	file, err := os.Create(filePath)
-	if err != nil {
+	File, Any_error = os.Create(filePath)
+	if Any_error != nil {
 		return err
 	}
-	defer file.Close()
+	defer File.Close()
 
 	if *SilentMode {
-		outputFunc("Downloaded: "+url+"\n")
+		outputFunc("Downloaded: " + url + "\n")
 	}
 
 	if !*SilentMode {
-		bar := createProgressBar(totalSize)
+		bar := CreateProgressBar(totalSize)
 		defer bar.Clear()
-		err = downloadWithProgressBar(resp.Body, file, limiter, totalSize, bar)
+		Any_error = DownloadWithProgressBar(resp.Body, File, limiter, totalSize, bar)
 	} else {
-		err = writeToOutputFile(outputFileName, resp)
+		// err = writeToOutputFile(outputFileName, resp)
+		_, Any_error = io.Copy(File, resp.Body)
 	}
 
 	DisplayDate(false)
 	return err
-}
-
-func determineOutputFileName(resp *http.Response, url string) string {
-	if *Output_name_arg_flag != "" {
-		return *Output_name_arg_flag
-	}
-	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-		return "index.html"
-	}
-	return Get_filename(url)
-}
-
-func determineFilePath(outputFileName string) string {
-	if *New_file_path != "" {
-		cleanedPath := filepath.Clean(*New_file_path)
-		homeDir, _ := os.UserHomeDir()
-		filePath := filepath.Join(homeDir, cleanedPath[1:], outputFileName)
-		*New_file_path = filePath
-		return filePath
-	}
-	return outputFileName
-}
-
-func createProgressBar(totalSize int64) *progressbar.ProgressBar {
-	bar := progressbar.NewOptions(
-		int(totalSize),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("[cyan][1/3][reset] Writing moshable file..."),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetWidth(35),
-		progressbar.OptionSetDescription(FormatSize(totalSize)),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}),
-	)
-	return bar
-}
-
-func downloadWithProgressBar(body io.Reader, file *os.File, limiter *RateLimiter, totalSize int64, bar *progressbar.ProgressBar) error {
-	buf := make([]byte, defaultBufferSize)
-	for {
-		n, err := body.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				// If we've reached the end of the response body, break the loop
-				break
-			}
-			return err
-		}
-		if limiter != nil {
-			timeRequired := limiter.Reserve(n)
-			time.Sleep(timeRequired)
-		}
-		_, err = file.Write(buf[:n])
-		if err != nil {
-			return err
-		}
-		bar.Add(n)
-	}
-	return nil
-}
-
-
-func writeToOutputFile(outputFileName string, resp *http.Response) error {
-	 Write_to_file(outputFileName, resp)
-	 return nil
 }

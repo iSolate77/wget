@@ -14,7 +14,11 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-var outputFunc func(a ...any) (n int, e error)
+const (
+	defaultBufferSize = 32 * 1024
+)
+
+var outputFunc func(a ...interface{}) (n int, err error)
 
 func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) error {
 	if wg != nil {
@@ -40,120 +44,120 @@ func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
 
-	// outputFunc("sending request, awaiting response... \n")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		outputFunc("error" + "\n")
+		outputFunc("error\n")
 		return err
-	}
-
-	outputFunc("HTTP request sent, awaiting response... " + resp.Status + "\n")
-	if resp.StatusCode != 200 {
-		outputFunc("error" + "\n")
-		return err
-	}
-
-	// Print contnet size
-	if resp.ContentLength < 0 {
-		outputFunc("Length: unspecified [text/html]\n")
-	} else {
-		outputFunc("Content-Length: " + strconv.Itoa(int(resp.ContentLength)) + " ("+FormatSize((resp.ContentLength))+")" + "\n")
 	}
 	defer resp.Body.Close()
 
-	default_fileName := Get_filename(url)
-	var output_fileName string
-	if *Output_name_arg_flag != "" {
-		output_fileName = *Output_name_arg_flag
-	} else {
-		if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-			output_fileName = "index.html"
-		} else {
-			output_fileName = default_fileName
-		}
+	outputFunc("HTTP request sent, awaiting response... " + resp.Status + "\n")
+	if resp.StatusCode != http.StatusOK {
+		outputFunc("error\n")
+		return fmt.Errorf("received non-200 status code: %s", resp.Status)
 	}
 
-	if *New_file_path != "" {
-		cleanedPath := filepath.Clean(*New_file_path)
-		homeDir, _ := os.UserHomeDir()
-		FilePath = filepath.Join(homeDir, cleanedPath[1:], output_fileName)
-		*New_file_path = FilePath
-		outputFunc("saving file to:" + FilePath + "\n")
-		file, err = os.Create(FilePath)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+	totalSize := resp.ContentLength
+	if totalSize < 0 {
+		outputFunc("Length: unspecified [text/html]\n")
 	} else {
-		outputFunc("saving file to:" + output_fileName + "\n")
-		file, err = os.Create(output_fileName)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+		outputFunc("Content-Length: " + strconv.FormatInt(totalSize, 10) + " ("+FormatSize(totalSize)+")" + "\n")
 	}
+
+	outputFileName := determineOutputFileName(resp, url)
+	filePath := determineFilePath(outputFileName)
+	outputFunc("saving file to:" + filePath + "\n")
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
 	if *SilentMode {
 		outputFunc("Downloaded: "+url+"\n")
 	}
-	// Get the total size for the progress bar
-	totalSize := resp.ContentLength
-	var bar *progressbar.ProgressBar
 
 	if !*SilentMode {
-		// Create a custom progress bar with enhanced formatting
-		bar = progressbar.NewOptions(
-			int(totalSize),
-			progressbar.OptionEnableColorCodes(true),
-			progressbar.OptionShowBytes(true),
-			progressbar.OptionSetWidth(15),
-			progressbar.OptionSetDescription("[cyan][1/3][reset] Writing moshable file..."),
-			progressbar.OptionSetRenderBlankState(true),
-			progressbar.OptionSetWidth(35),
-			progressbar.OptionSetDescription(FormatSize(totalSize)),
-			progressbar.OptionSetTheme(progressbar.Theme{
-				Saucer:        "[green]=[reset]",
-				SaucerHead:    "[green]>[reset]",
-				SaucerPadding: " ",
-				BarStart:      "[",
-				BarEnd:        "]",
-			}),
-		)
-		// Download with rate limiting
-		cal_rate := 32 * 1024 // Default value
-		if *RateLimit != "" {
-			// Assign a different value if limiter.limit is zero
-			cal_rate = int(limiter.limit-10)
-		}
-		buf := make([]byte, cal_rate)
-		for {
-			// Check if the download is complete
-			if totalSize <= 0 {
+		bar := createProgressBar(totalSize)
+		defer bar.Clear()
+		err = downloadWithProgressBar(resp.Body, file, limiter, totalSize, bar)
+	} else {
+		err = writeToOutputFile(outputFileName, resp)
+	}
+
+	DisplayDate(false)
+	return err
+}
+
+func determineOutputFileName(resp *http.Response, url string) string {
+	if *Output_name_arg_flag != "" {
+		return *Output_name_arg_flag
+	}
+	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+		return "index.html"
+	}
+	return Get_filename(url)
+}
+
+func determineFilePath(outputFileName string) string {
+	if *New_file_path != "" {
+		cleanedPath := filepath.Clean(*New_file_path)
+		homeDir, _ := os.UserHomeDir()
+		filePath := filepath.Join(homeDir, cleanedPath[1:], outputFileName)
+		*New_file_path = filePath
+		return filePath
+	}
+	return outputFileName
+}
+
+func createProgressBar(totalSize int64) *progressbar.ProgressBar {
+	bar := progressbar.NewOptions(
+		int(totalSize),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan][1/3][reset] Writing moshable file..."),
+		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionSetWidth(35),
+		progressbar.OptionSetDescription(FormatSize(totalSize)),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+	return bar
+}
+
+func downloadWithProgressBar(body io.Reader, file *os.File, limiter *RateLimiter, totalSize int64, bar *progressbar.ProgressBar) error {
+	buf := make([]byte, defaultBufferSize)
+	for {
+		n, err := body.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				// If we've reached the end of the response body, break the loop
 				break
 			}
-			// Read a chunk of data
-			n, err := resp.Body.Read(buf)
-			if err != nil && err != io.EOF {
-				return err
-			}
-			// Reserve tokens based on the number of bytes read
-			if *RateLimit != "" {
-				timeRequired := limiter.Reserve(n)
-
-				// Wait for the required time
-				time.Sleep(timeRequired)
-			}
-			// Write the data to the output file
-			_, err = file.Write(buf[:n])
-			if err != nil {
-				return err
-			}
-			// Update progress bar
-			bar.Add64(int64(n))
-			totalSize -= int64(n)
+			return err
 		}
-	} else {
-		Write_to_file(output_fileName, resp)
+		if limiter != nil {
+			timeRequired := limiter.Reserve(n)
+			time.Sleep(timeRequired)
+		}
+		_, err = file.Write(buf[:n])
+		if err != nil {
+			return err
+		}
+		bar.Add(n)
 	}
-	DisplayDate(false)
 	return nil
+}
+
+
+func writeToOutputFile(outputFileName string, resp *http.Response) error {
+	 Write_to_file(outputFileName, resp)
+	 return nil
 }

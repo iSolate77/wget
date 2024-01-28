@@ -2,6 +2,7 @@ package bblocks
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 )
 
@@ -18,5 +19,6 @@ func GetLinksFromFile() ([]string, error) {
 		}
 		pathArr = append(pathArr, scanner.Text())
 	}
+	fmt.Println(pathArr)
 	return pathArr, nil
 }

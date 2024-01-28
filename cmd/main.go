@@ -13,7 +13,6 @@ import (
 var wg sync.WaitGroup
 
 func main() {
-	// Print start time
 	flag.Parse()
 
 	if *bblocks.SilentMode {
@@ -21,7 +20,6 @@ func main() {
 	} else {
 		os.Remove("wget-log.txt")
 	}
-
 	if *bblocks.AsyncFileInput != "" {
 		links, err := bblocks.GetLinksFromFile()
 		if err != nil {
@@ -29,7 +27,7 @@ func main() {
 		}
 		for _, link := range links {
 			wg.Add(1)
-			go bblocks.DownloadFile(link, *bblocks.Output_name_arg_flag, &wg)
+			go bblocks.DownloadFileWithRateLimitAndProgressBar(link, &wg)
 		}
 		wg.Wait()
 	} else {
@@ -37,6 +35,6 @@ func main() {
 			return
 		}
 		URL_PATH := flag.Args()[0]
-		bblocks.DownloadFile(URL_PATH, *bblocks.Output_name_arg_flag, nil)
+		bblocks.DownloadFileWithRateLimitAndProgressBar(URL_PATH, nil)
 	}
 }

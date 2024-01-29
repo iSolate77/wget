@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+
 	"github.com/pkg/errors"
 )
 
@@ -17,9 +18,25 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	if err != nil {
 		return errors.Wrap(err, "error parsing URL")
 	}
+	// if *Exclude != "" {
+	// 	excludes := strings.Split(*Exclude, ",")
+	// 	for _, ex := range excludes {
+	// 		if strings.Contains(string(u.Path), ex) {
+	// 			return nil
+	// 		}
+	// 	}
+	// }
 
 	// Get the file name from the URL path
 	fileName := path.Base(u.Path)
+	// if *Reject != "" {
+	// 	rejetcs := strings.Split(*Reject, ",")
+	// 	for _, rej := range rejetcs {
+	// 		if strings.Contains(fileName, rej) {
+	// 			return nil
+	// 		}
+	// 	}
+	// }
 
 	// If the file name doesn't have an extension, try to detect from the Content-Disposition header
 	if !strings.Contains(fileName, ".") {
@@ -39,7 +56,6 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 			fileName = "index.html"
 		}
 	}
-
 	// If still no file name, use a default name
 	if fileName == "" {
 		fileName = "downloaded_file"
@@ -61,7 +77,6 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	defer outFile.Close()
 
 	// Download with progress bar
-	bar := CreateProgressBar(0)
 
 	// Define function to download file content
 	downloadFunc := func() error {
@@ -71,9 +86,11 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 		}
 		defer resp.Body.Close()
 
+
 		// Set total size for progress bar
-		bar.ChangeMax(int(resp.ContentLength))
 		totalSize := resp.ContentLength
+		bar := CreateProgressBar(totalSize)
+		bar.ChangeMax(int(resp.ContentLength))
 
 		// Download content with progress bar
 		err = DownloadWithProgressBar(resp.Body, outFile, nil, totalSize, bar)
@@ -81,6 +98,12 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 			return errors.Wrap(err, "error downloading with progress bar")
 		}
 
+		// if *ConvertMode && strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		// 	err = ConvertHTMLLinks(resp.Body, outFile, BaseUrl)
+		// 	if err != nil {
+		// 		return errors.Wrap(err, "error converting HTML links")
+		// 	}
+		// }
 		return nil
 	}
 

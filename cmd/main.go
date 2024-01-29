@@ -26,9 +26,9 @@ func main() {
 			return
 		}
 
-		baseURL, err := url.Parse(urlw)
-		if err != nil {
-			fmt.Println("Error parsing URL:", err)
+		bblocks.BaseUrl, bblocks.Any_error = url.Parse(urlw)
+		if bblocks.Any_error != nil {
+			fmt.Println("Error parsing URL:", bblocks.Any_error)
 			return
 		}
 
@@ -41,7 +41,7 @@ func main() {
 		}
 
 		// Fetch robots.txt and parse
-		robotsURL := baseURL.ResolveReference(&url.URL{Path: "/robots.txt"}).String()
+		robotsURL := bblocks.BaseUrl.ResolveReference(&url.URL{Path: "/robots.txt"}).String()
 		robotsResp, err := client.Get(robotsURL)
 		if err != nil {
 			fmt.Println("Error fetching robots.txt:", err)
@@ -55,10 +55,10 @@ func main() {
 		}
 
 		discovered := make(map[string]bool)
-		bblocks.Crawl(urlw, baseURL, discovered, client, robots)
+		bblocks.Crawl(urlw, bblocks.BaseUrl, discovered, client, robots)
 
 		// Create base directory
-		hostDir := path.Join(".", baseURL.Host)
+		hostDir := path.Join(".", bblocks.BaseUrl.Host)
 		err = os.Mkdir(hostDir, 0755)
 		if err != nil {
 			fmt.Println("Error creating base directory:", err)
@@ -67,6 +67,7 @@ func main() {
 
 		// Download files
 		discoveredURLs := make([]string, 0, len(discovered))
+
 		for url := range discovered {
 			discoveredURLs = append(discoveredURLs, url)
 		}
@@ -76,7 +77,7 @@ func main() {
 		}
 
 		// Download main page if not already discovered
-		mainPage := baseURL.String()
+		mainPage := bblocks.BaseUrl.String()
 		if _, ok := discovered[mainPage]; !ok {
 			bblocks.DownloadFile(mainPage, client, hostDir)
 		}
@@ -98,12 +99,15 @@ func main() {
 			}
 			wg.Wait()
 		} else {
-			urlPath := flag.Arg(0)
-			if urlPath == "" {
+			urlPath := flag.Args()
+			for _,link := range urlPath{
+				bblocks.DownloadFileWithRateLimitAndProgressBar(link, nil)
+
+			}
+			if len(urlPath) == 0 {
 				fmt.Println("Please provide a URL or file path")
 				return
 			}
-			bblocks.DownloadFileWithRateLimitAndProgressBar(urlPath, nil)
 		}
 	}
 }

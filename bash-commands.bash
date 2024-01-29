@@ -70,7 +70,35 @@ pause
 pause
 clear
 
-echo "./wget --mirror https://reboot01.com"
+echo "./wget --mirror https://oct82.com/"
 pause
-./wget --mirror https://reboot01.com
+./wget --mirror https://oct82.com/
+pause
+clear
+
+echo "./wget --mirror --reject=gif https://oct82.com/"
+pause
+./wget --mirror --reject=gif https://oct82.com/
+pause
+clear
+
+echo "./wget --mirror https://trypap.com/"
+pause
+./wget --mirror https://trypap.com/
+pause
+clear
+
+echo "./wget --mirror -X=/img https://trypap.com/"
+pause
+./wget --mirror -X=/img https://trypap.com/
+pause
+clear
+
+echo "./wget --mirror https://theuselessweb.com/"
+pause
+./wget --mirror https://theuselessweb.com/
+pause
+clear
+
+echo "./wget --mirror <https://link_of_your_choice.com>"
 pause

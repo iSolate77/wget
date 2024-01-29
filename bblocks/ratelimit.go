@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -27,6 +28,7 @@ func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) err
 
 	var limiter *RateLimiter
 	DisplayDate(true)
+
 	if *RateLimit != "" {
 		downloadSpeed, _ := ParseRateLimit(*RateLimit)
 		limiter = NewLimiter(downloadSpeed)
@@ -64,6 +66,7 @@ func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) err
 	outputFunc("saving file to:" + filePath + "\n")
 
 	File, Any_error = os.Create(filePath)
+
 	if Any_error != nil {
 		return err
 	}
@@ -74,9 +77,14 @@ func DownloadFileWithRateLimitAndProgressBar(url string, wg *sync.WaitGroup) err
 	}
 
 	if !*SilentMode {
-		bar := CreateProgressBar(totalSize)
-		defer bar.Clear()
-		Any_error = DownloadWithProgressBar(resp.Body, File, limiter, totalSize, bar)
+		if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+			_, Any_error = io.Copy(File, resp.Body)
+
+		} else {
+			bar := CreateProgressBar(totalSize)
+			Any_error = DownloadWithProgressBar(resp.Body, File, limiter, totalSize, bar)
+			defer bar.Clear()
+		}
 	} else {
 		// err = writeToOutputFile(outputFileName, resp)
 		_, Any_error = io.Copy(File, resp.Body)

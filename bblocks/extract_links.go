@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/temoto/robotstxt"
@@ -66,7 +67,8 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 			return
 		case html.StartTagToken, html.SelfClosingTagToken:
 			token := tokenizer.Token()
-			if token.Data == "a" || token.Data == "link" || token.Data == "script" || token.Data == "img" {
+			switch token.Data {
+			case "a", "link", "script", "img":
 				for _, attr := range token.Attr {
 					if (token.Data == "a" && attr.Key == "href") || (token.Data == "link" && attr.Key == "href") || (token.Data == "script" && attr.Key == "src") || (token.Data == "img" && attr.Key == "src") {
 						link := attr.Val
@@ -83,7 +85,49 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 						}
 					}
 				}
+			case "style":
+				for {
+					tokenType := tokenizer.Next()
+					if tokenType == html.ErrorToken || tokenType == html.EndTagToken && tokenizer.Token().Data == "style" {
+						break
+						} else if tokenType == html.TextToken {
+							cssContent := tokenizer.Token().Data
+							cssURLs := extractURLsFromCSS(cssContent, baseURL)
+							for _, cssURL := range cssURLs {
+								Crawl(cssURL, baseURL, discovered, client, robots)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
+
+	func extractURLsFromCSS(cssContent string, baseURL *url.URL) []string {
+		var urls []string
+
+	// Regular expression to match URLs within url() declarations
+	re := regexp.MustCompile(`url\(['"]?([^'"]*?)['"]?\)`)
+
+	// Find all matches in the CSS content
+	matches := re.FindAllStringSubmatch(cssContent, -1)
+	fmt.Println("here")
+	fmt.Println(matches)
+	for _, match := range matches {
+		url := match[1] // The URL is captured in the second group
+		if strings.HasPrefix(url, "(") {
+			// Absolute URL
+			urls = append(urls, url)
+			fmt.Println(urls)
+		} else {
+			// Relative URL, resolve it relative to the base URL
+			linkURL, err := baseURL.Parse(url)
+			if err != nil {
+				fmt.Println("Error resolving URL:", err)
+				continue
+			}
+			urls = append(urls, linkURL.String())
+		}
+	}
+	return urls
 }

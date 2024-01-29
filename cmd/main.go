@@ -71,16 +71,23 @@ func main() {
 		for url := range discovered {
 			discoveredURLs = append(discoveredURLs, url)
 		}
-		discoveredURLs = append(discoveredURLs, urlw)
+		// discoveredURLs = append(discoveredURLs, urlw)
 		for _, url := range discoveredURLs {
 			bblocks.DownloadFile(url, client, hostDir)
 		}
 
-		// Download main page if not already discovered
-		mainPage := bblocks.BaseUrl.String()
-		if _, ok := discovered[mainPage]; !ok {
-			bblocks.DownloadFile(mainPage, client, hostDir)
+		if *bblocks.ConvertMode {
+			err = bblocks.ConvertHTMLLinks(bblocks.Resp.Body, bblocks.OutFile, bblocks.BaseUrl)
+			if err != nil {
+				os.Exit(1)
+			}
 		}
+
+		// Download main page if not already discovered
+		// mainPage := bblocks.BaseUrl.String()
+		// if _, ok := discovered[mainPage]; !ok {
+		// 	bblocks.DownloadFile(mainPage, client, hostDir)
+		// }
 	} else {
 		if *bblocks.SilentMode {
 			fmt.Println("output will be written to wget-log")
@@ -100,9 +107,8 @@ func main() {
 			wg.Wait()
 		} else {
 			urlPath := flag.Args()
-			for _,link := range urlPath{
+			for _, link := range urlPath {
 				bblocks.DownloadFileWithRateLimitAndProgressBar(link, nil)
-
 			}
 			if len(urlPath) == 0 {
 				fmt.Println("Please provide a URL or file path")

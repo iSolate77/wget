@@ -2,6 +2,7 @@ package bblocks
 
 import (
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"net/url"
@@ -18,25 +19,25 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	if err != nil {
 		return errors.Wrap(err, "error parsing URL")
 	}
-	// if *Exclude != "" {
-	// 	excludes := strings.Split(*Exclude, ",")
-	// 	for _, ex := range excludes {
-	// 		if strings.Contains(string(u.Path), ex) {
-	// 			return nil
-	// 		}
-	// 	}
-	// }
+	if *Exclude != "" {
+		excludes := strings.Split(*Exclude, ",")
+		for _, ex := range excludes {
+			if strings.Contains(string(u.Path), ex) {
+				return nil
+			}
+		}
+	}
 
 	// Get the file name from the URL path
 	fileName := path.Base(u.Path)
-	// if *Reject != "" {
-	// 	rejetcs := strings.Split(*Reject, ",")
-	// 	for _, rej := range rejetcs {
-	// 		if strings.Contains(fileName, rej) {
-	// 			return nil
-	// 		}
-	// 	}
-	// }
+	if *Reject != "" {
+		rejetcs := strings.Split(*Reject, ",")
+		for _, rej := range rejetcs {
+			if strings.Contains(fileName, rej) {
+				return nil
+			}
+		}
+	}
 
 	// If the file name doesn't have an extension, try to detect from the Content-Disposition header
 	if !strings.Contains(fileName, ".") {
@@ -70,40 +71,38 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	}
 
 	// Create file
-	outFile, err := os.Create(path.Join(filePath, fileName))
-	if err != nil {
+	OutFile, Any_error = os.Create(path.Join(filePath, fileName))
+	if Any_error != nil {
 		return errors.Wrap(err, "error creating file")
 	}
-	defer outFile.Close()
+	defer OutFile.Close()
 
 	// Download with progress bar
 
 	// Define function to download file content
 	downloadFunc := func() error {
-		resp, err := client.Get(urlw)
-		if err != nil {
+		Resp, Any_error = client.Get(urlw)
+		if Any_error != nil {
 			return errors.Wrap(err, "error downloading file")
 		}
-		defer resp.Body.Close()
 
+		defer Resp.Body.Close()
 
 		// Set total size for progress bar
-		totalSize := resp.ContentLength
+		totalSize := Resp.ContentLength
 		bar := CreateProgressBar(totalSize)
-		bar.ChangeMax(int(resp.ContentLength))
+		bar.ChangeMax(int(Resp.ContentLength))
 
-		// Download content with progress bar
-		err = DownloadWithProgressBar(resp.Body, outFile, nil, totalSize, bar)
-		if err != nil {
-			return errors.Wrap(err, "error downloading with progress bar")
+		if strings.HasPrefix(Resp.Header.Get("Content-Type"), "text/html")	 {
+			_, Any_error = io.Copy(OutFile, Resp.Body)
+
+		} else {
+			err = DownloadWithProgressBar(Resp.Body, OutFile, nil, totalSize, bar)
+			if err != nil {
+				return errors.Wrap(err, "error downloading with progress bar")
+			}
+
 		}
-
-		// if *ConvertMode && strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
-		// 	err = ConvertHTMLLinks(resp.Body, outFile, BaseUrl)
-		// 	if err != nil {
-		// 		return errors.Wrap(err, "error converting HTML links")
-		// 	}
-		// }
 		return nil
 	}
 

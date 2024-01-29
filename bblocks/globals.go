@@ -2,6 +2,7 @@ package bblocks
 
 import (
 	"flag"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -24,6 +25,8 @@ var (
 	AsyncFileInput       = flag.String("i", "", "Async file download from input txt source")
 	RateLimit            = flag.String("rate-limit", "", "Speed limit for download (e.g., 400k, 2M)")
 	BaseUrl              *url.URL
+	OutFile              *os.File
+	Resp                 *http.Response
 )
 
 type RateLimiter struct {

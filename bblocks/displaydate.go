@@ -12,6 +12,6 @@ func DisplayDate(start bool) {
 	if start {
 		outputFunc("start at " + x + "\n")
 	} else {
-		outputFunc("\nfinished at " + x + "\n")
+		outputFunc("finished at " + x + "\n")
 	}
 }

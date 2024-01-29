@@ -1,0 +1,143 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"mime"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strings"
+	"time"
+	"wget/bblocks"
+
+	"github.com/temoto/robotstxt"
+)
+
+func downloadFile(urlw string, client *http.Client, baseDir string) {
+	// Extract file name from URL
+	u, err := url.Parse(urlw)
+	if err != nil {
+		fmt.Println("Error parsing URL:", err)
+		return
+	}
+
+	// Get the file name from the URL path
+	fileName := path.Base(u.Path)
+
+	// If the file name doesn't have an extension, try to detect from the Content-Disposition header
+	if !strings.Contains(fileName, ".") {
+		resp, err := client.Head(urlw)
+		if err != nil {
+			fmt.Println("Error getting HEAD:", err)
+			return
+		}
+		contentDisposition := resp.Header.Get("Content-Disposition")
+		if contentDisposition != "" {
+			_, params, err := mime.ParseMediaType(contentDisposition)
+			if err == nil {
+				fileName = params["filename"]
+			}
+		}
+		contentType := resp.Header.Get("Content-Type")
+		if strings.HasPrefix(contentType, "text/html") {
+			fileName = "index.html"
+		}
+	}
+
+	// If still no file name, use a default name
+	if fileName == "" {
+		fileName = "downloaded_file"
+	}
+
+	// If the file is an HTML page, rename it to index.html
+
+	// Create directories
+	filePath := path.Join(baseDir, path.Dir(u.Path))
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		err := os.MkdirAll(filePath, 0755)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return
+		}
+	}
+
+	// Create file
+	outFile, err := os.Create(path.Join(filePath, fileName))
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer outFile.Close()
+
+	// Download file
+	resp, err := client.Get(urlw)
+	if err != nil {
+		fmt.Println("Error downloading file:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Copy contents to file
+	_, err = io.Copy(outFile, resp.Body)
+	if err != nil {
+		fmt.Println("Error copying file contents:", err)
+		return
+	}
+
+	fmt.Println("Downloaded:", fileName)
+}
+
+func main() {
+	urlw := "https://reboot01.com"
+	baseURL, _ := url.Parse(urlw)
+	discovered := make(map[string]bool)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Allow automatic redirects
+			return nil
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	// Fetch robots.txt and parse
+	robotsURL := urlw + "/robots.txt"
+	robotsResp, err := client.Get(robotsURL)
+	if err != nil {
+		fmt.Println("Error fetching robots.txt:", err)
+		return
+	}
+	defer robotsResp.Body.Close()
+	robots, err := robotstxt.FromResponse(robotsResp)
+	if err != nil {
+		fmt.Println("Error parsing robots.txt:", err)
+		return
+	}
+
+	bblocks.Crawl(urlw, baseURL, discovered, client, robots)
+
+	// Create base directory
+	hostDir := path.Join(".", baseURL.Host)
+	err = os.Mkdir(hostDir, 0755)
+	if err != nil {
+		fmt.Println("Error creating base directory:", err)
+		return
+	}
+
+	// Download files
+	discoveredURLs := make([]string, 0, len(discovered))
+	for url := range discovered {
+		discoveredURLs = append(discoveredURLs, url)
+	}
+	discoveredURLs = append(discoveredURLs, "https://reboot01.com")
+	for _, path := range discoveredURLs {
+		downloadFile(path, client, hostDir)
+	}
+
+	// Download main page if not already discovered
+	mainPage := baseURL.String()
+	if _, ok := discovered[mainPage]; !ok {
+		downloadFile(mainPage, client, hostDir)
+	}
+}

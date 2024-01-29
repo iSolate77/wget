@@ -8,6 +8,8 @@ import (
 
 var (
 	SilentMode = flag.Bool("B", false, "Silent Mode")
+	Reject = flag.String("R", "", "Reject specific file types")
+	Exclude = flag.String("X", "", "Exclude specific directories")
 	MirrorMode = flag.Bool("mirror",false,"Mirror Website")
 	LogFile, _ = os.Create("wget-log.txt")
 	Output_name_arg_flag = flag.String("O", "", "Output file name")
@@ -23,4 +25,8 @@ type RateLimiter struct {
 	limit  float64
 	burst  float64
 	tokens float64
+}
+
+type CustomWriter interface {
+	Write([]byte) (int, error)
 }

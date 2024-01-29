@@ -69,3 +69,8 @@ pause
 ./wget -B http://ipv4.download.thinkbroadband.com/20MB.zip
 pause
 clear
+
+echo "./wget --mirror https://reboot01.com"
+pause
+./wget --mirror https://reboot01.com
+pause

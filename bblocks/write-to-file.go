@@ -9,7 +9,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-func Write_to_file(output_fileName string, resp *http.Response) {
+func Write_to_files(output_fileName string, resp *http.Response) {
 	// Create file
 	if *New_file_path != "" {
 		// File, Any_error = os.Create(*New_file_path + output_fileName)

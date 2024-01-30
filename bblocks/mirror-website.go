@@ -41,18 +41,18 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 
 	// If the file name doesn't have an extension, try to detect from the Content-Disposition header
 	if !strings.Contains(fileName, ".") {
-		resp, err := client.Head(urlw)
+		Resp, err = client.Head(urlw)
 		if err != nil {
 			return errors.Wrap(err, "error getting HEAD")
 		}
-		contentDisposition := resp.Header.Get("Content-Disposition")
+		contentDisposition := Resp.Header.Get("Content-Disposition")
 		if contentDisposition != "" {
 			_, params, err := mime.ParseMediaType(contentDisposition)
 			if err == nil {
 				fileName = params["filename"]
 			}
 		}
-		contentType := resp.Header.Get("Content-Type")
+		contentType := Resp.Header.Get("Content-Type")
 		if strings.HasPrefix(contentType, "text/html") {
 			fileName = "index.html"
 		}
@@ -71,17 +71,15 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	}
 
 	// Create file
-	OutFile, Any_error = os.Create(path.Join(filePath, fileName))
+	OutFile, Any_error := os.Create(path.Join(filePath, fileName))
 	if Any_error != nil {
 		return errors.Wrap(err, "error creating file")
 	}
 	defer OutFile.Close()
 
-	// Download with progress bar
-
 	// Define function to download file content
 	downloadFunc := func() error {
-		Resp, Any_error = client.Get(urlw)
+		Resp, Any_error := client.Get(urlw)
 		if Any_error != nil {
 			return errors.Wrap(err, "error downloading file")
 		}
@@ -93,16 +91,20 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 		bar := CreateProgressBar(totalSize)
 		bar.ChangeMax(int(Resp.ContentLength))
 
-		if strings.HasPrefix(Resp.Header.Get("Content-Type"), "text/html")	 {
+		if strings.HasPrefix(Resp.Header.Get("Content-Type"), "text/html") {
 			_, Any_error = io.Copy(OutFile, Resp.Body)
+			if Any_error != nil {
+				return Any_error
+			}
 
 		} else {
-			err = DownloadWithProgressBar(Resp.Body, OutFile, nil, totalSize, bar)
+			err = DownloadWithStandardProgressBar(Resp.Body, OutFile, nil, totalSize, bar)
 			if err != nil {
 				return errors.Wrap(err, "error downloading with progress bar")
 			}
 
 		}
+
 		return nil
 	}
 

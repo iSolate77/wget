@@ -2,142 +2,92 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"mime"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"strings"
-	"time"
-	"wget/bblocks"
-
-	"github.com/temoto/robotstxt"
+	"regexp"
 )
 
-func downloadFile(urlw string, client *http.Client, baseDir string) {
-	// Extract file name from URL
-	u, err := url.Parse(urlw)
-	if err != nil {
-		fmt.Println("Error parsing URL:", err)
-		return
+func main() {
+	// HTML content with URLs
+	htmlContent := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <style>
+        body { background-color:lightBlue; }
+        #snow{
+            background: none;
+            font-family: Androgyne;
+            background-image: url('/corndog-tile-1.png'), url('/corndog-tile.png'), url('/corndog-tile-2.png');
+            height: 100%;
+            left: 0;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            z-index:1;
+            -webkit-animation: snow 1000s linear infinite;
+            -moz-animation: snow 1000s linear infinite;
+            -ms-animation: snow 1000s linear infinite;
+            animation: snow 1000s linear infinite;
+            -webkit-transform: translate3d(0,0,0);
+            -moz-transform: translate3d(0,0,0);
+            -ms-transform: translate3d(0,0,0);
+            -o-transform: translate3d(0,0,0);
+            transform: translate3d(0,0,0);
+        }
+        @keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-moz-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-webkit-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-ms-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+    </style>
+</head>
+<body>
+    <div id="snow">
+</div>
+</body>
+</html>`
+
+	// Downloaded files map: URL -> Local path
+	downloadedFiles := map[string]string{
+		"/corndog-tile-1.png": "/home/sam/Desktop/wget/corndog.io/corndog-tile-1.png",
+		"/corndog-tile.png":   "/home/sam/Desktop/wget/corndog.io/corndog-tile.png",
+		"/corndog-tile-2.png": "/home/sam/Desktop/wget/corndog.io/corndog-tile-2.png",
 	}
 
-	// Get the file name from the URL path
-	fileName := path.Base(u.Path)
+	// Replace URLs with local file paths
+	htmlContentWithLocalPaths := replaceURLsWithLocalPaths(htmlContent, downloadedFiles)
 
-	// If the file name doesn't have an extension, try to detect from the Content-Disposition header
-	if !strings.Contains(fileName, ".") {
-		resp, err := client.Head(urlw)
-		if err != nil {
-			fmt.Println("Error getting HEAD:", err)
-			return
-		}
-		contentDisposition := resp.Header.Get("Content-Disposition")
-		if contentDisposition != "" {
-			_, params, err := mime.ParseMediaType(contentDisposition)
-			if err == nil {
-				fileName = params["filename"]
-			}
-		}
-		contentType := resp.Header.Get("Content-Type")
-		if strings.HasPrefix(contentType, "text/html") {
-			fileName = "index.html"
-		}
-	}
-
-	// If still no file name, use a default name
-	if fileName == "" {
-		fileName = "downloaded_file"
-	}
-
-	// If the file is an HTML page, rename it to index.html
-
-	// Create directories
-	filePath := path.Join(baseDir, path.Dir(u.Path))
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		err := os.MkdirAll(filePath, 0755)
-		if err != nil {
-			fmt.Println("Error creating directory:", err)
-			return
-		}
-	}
-
-	// Create file
-	outFile, err := os.Create(path.Join(filePath, fileName))
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
-	}
-	defer outFile.Close()
-
-	// Download file
-	resp, err := client.Get(urlw)
-	if err != nil {
-		fmt.Println("Error downloading file:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Copy contents to file
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		fmt.Println("Error copying file contents:", err)
-		return
-	}
-
-	fmt.Println("Downloaded:", fileName)
+	// Print HTML content with local file paths
+	fmt.Println(htmlContentWithLocalPaths)
 }
 
-func main() {
-	urlw := "https://reboot01.com"
-	baseURL, _ := url.Parse(urlw)
-	discovered := make(map[string]bool)
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Allow automatic redirects
-			return nil
-		},
-		Timeout: 10 * time.Second,
-	}
+func replaceURLsWithLocalPaths(htmlContent string, downloadedFiles map[string]string) string {
+	// Regular expression to match URLs in the HTML content
+	urlRegex := regexp.MustCompile(`url\(['"]?([^'"]*?)['"]?\)`)
 
-	// Fetch robots.txt and parse
-	robotsURL := urlw + "/robots.txt"
-	robotsResp, err := client.Get(robotsURL)
-	if err != nil {
-		fmt.Println("Error fetching robots.txt:", err)
-		return
-	}
-	defer robotsResp.Body.Close()
-	robots, err := robotstxt.FromResponse(robotsResp)
-	if err != nil {
-		fmt.Println("Error parsing robots.txt:", err)
-		return
-	}
+	// Replace URLs with local file paths
+	htmlContent = urlRegex.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		// Extract the URL from the match
+		url := urlRegex.FindStringSubmatch(match)[1]
 
-	bblocks.Crawl(urlw, baseURL, discovered, client, robots)
+		// Replace the URL with the local file path if available
+		if localPath, ok := downloadedFiles[url]; ok {
+			return fmt.Sprintf("url('%s')", localPath)
+		}
+		return match // Keep the original URL if no local file path is available
+	})
 
-	// Create base directory
-	hostDir := path.Join(".", baseURL.Host)
-	err = os.Mkdir(hostDir, 0755)
-	if err != nil {
-		fmt.Println("Error creating base directory:", err)
-		return
-	}
-
-	// Download files
-	discoveredURLs := make([]string, 0, len(discovered))
-	for url := range discovered {
-		discoveredURLs = append(discoveredURLs, url)
-	}
-	discoveredURLs = append(discoveredURLs, "https://reboot01.com")
-	for _, path := range discoveredURLs {
-		downloadFile(path, client, hostDir)
-	}
-
-	// Download main page if not already discovered
-	mainPage := baseURL.String()
-	if _, ok := discovered[mainPage]; !ok {
-		downloadFile(mainPage, client, hostDir)
-	}
+	return htmlContent
 }

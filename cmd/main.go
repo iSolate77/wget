@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 	"wget/bblocks"
@@ -75,19 +77,18 @@ func main() {
 		for _, url := range discoveredURLs {
 			bblocks.DownloadFile(url, client, hostDir)
 		}
-
-		if *bblocks.ConvertMode {
-			err = bblocks.ConvertHTMLLinks(bblocks.Resp.Body, bblocks.OutFile, bblocks.BaseUrl)
+		if *bblocks.ConvertMode && strings.HasPrefix(bblocks.Resp.Header.Get("Content-Type"), "text/html") {
+			htmlContent, _ := ioutil.ReadFile("/home/sam/Desktop/wget/corndog.io/index.html")
+			modifiedHTML := bblocks.ConvertURLs(htmlContent)
+			// ConvertHTMLLinks(Resp.Body, File, BaseUrl)
+			err = ioutil.WriteFile("/home/sam/Desktop/wget/corndog.io/index.html", []byte(modifiedHTML), 0644)
 			if err != nil {
+				fmt.Println("Error writing modified HTML file:", err)
 				os.Exit(1)
 			}
 		}
 
-		// Download main page if not already discovered
-		// mainPage := bblocks.BaseUrl.String()
-		// if _, ok := discovered[mainPage]; !ok {
-		// 	bblocks.DownloadFile(mainPage, client, hostDir)
-		// }
+		os.Remove("wget-log.txt")
 	} else {
 		if *bblocks.SilentMode {
 			fmt.Println("output will be written to wget-log")
@@ -105,6 +106,7 @@ func main() {
 				go bblocks.DownloadFileWithRateLimitAndProgressBar(link, &wg)
 			}
 			wg.Wait()
+			os.Remove("wget-log.txt")
 		} else {
 			urlPath := flag.Args()
 			for _, link := range urlPath {

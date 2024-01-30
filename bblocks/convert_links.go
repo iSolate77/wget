@@ -1,6 +1,7 @@
 package bblocks
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"regexp"
@@ -29,7 +30,8 @@ func ConvertHTMLLinks(input io.Reader, output io.Writer, baseURL *url.URL) error
 					n.Attr[i].Val = absURL.String()
 				}
 			}
-		} else if n.Type == html.ElementNode && n.Data == "style" {
+		} else if n.Data == "style" {
+			fmt.Println("here")
 			// Convert URLs inside style element
 			cssContent := strings.TrimSpace(getTextContent(n))
 			cssContent = convertURLsInCSS(cssContent, baseURL)
@@ -86,4 +88,28 @@ func convertURLsInCSS(cssContent string, baseURL *url.URL) string {
 	})
 
 	return modifiedCSS
+}
+
+func ConvertURLs(htmlContent []byte) string {
+	// Convert HTML content to string
+	htmlStr := string(htmlContent)
+
+	// Absolute path to the directory
+	// Define a regex pattern to match the URL values inside url() function
+	urlPattern := `url\(['"]?(.*?)['"]?\)`
+
+	// Compile the regex pattern
+	re := regexp.MustCompile(urlPattern)
+
+	// Replace the matched URL values with the desired value
+	modifiedHTML := re.ReplaceAllStringFunc(htmlStr, func(match string) string {
+		// Extract the URL value from the matched string
+		url := re.FindStringSubmatch(match)[1]
+
+		// Replace the URL value with the desired absolute path
+		absolutePath := "/corndog.io" + url // Replace with your working directory path
+		return "url('" + absolutePath + "')"
+	})
+
+	return modifiedHTML
 }

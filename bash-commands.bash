@@ -70,6 +70,12 @@ pause
 pause
 clear
 
+echo "./wget --mirror --convert-links http://corndog.io/"
+pause
+./wget --mirror --convert-links http://corndog.io/
+pause
+clear
+
 echo "./wget --mirror https://oct82.com/"
 pause
 ./wget --mirror https://oct82.com/

@@ -38,15 +38,15 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 	}
 	req.Header.Set("User-Agent", userAgent)
 
-	resp, err := client.Do(req)
+	Resp, err = client.Do(req)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer Resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Error:", resp.Status)
+	if Resp.StatusCode != http.StatusOK {
+		fmt.Println("Error:", Resp.Status)
 		return
 	}
 
@@ -58,7 +58,7 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 	discovered[urlw] = true
 	fmt.Println(urlw)
 
-	tokenizer := html.NewTokenizer(resp.Body)
+	tokenizer := html.NewTokenizer(Resp.Body)
 
 	for {
 		tokenType := tokenizer.Next()
@@ -92,7 +92,7 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 						break
 						} else if tokenType == html.TextToken {
 							cssContent := tokenizer.Token().Data
-							cssURLs := extractURLsFromCSS(cssContent, baseURL)
+							cssURLs := ExtractURLsFromCSS(cssContent, baseURL)
 							for _, cssURL := range cssURLs {
 								Crawl(cssURL, baseURL, discovered, client, robots)
 							}
@@ -103,7 +103,7 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 		}
 	}
 
-	func extractURLsFromCSS(cssContent string, baseURL *url.URL) []string {
+	func ExtractURLsFromCSS(cssContent string, baseURL *url.URL) []string {
 		var urls []string
 
 	// Regular expression to match URLs within url() declarations
@@ -111,7 +111,6 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 
 	// Find all matches in the CSS content
 	matches := re.FindAllStringSubmatch(cssContent, -1)
-	fmt.Println("here")
 	fmt.Println(matches)
 	for _, match := range matches {
 		url := match[1] // The URL is captured in the second group

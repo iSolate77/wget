@@ -2,6 +2,7 @@ package bblocks
 
 import (
 	"regexp"
+	"strings"
 )
 
 func Get_filename(URL_PATH string) string {
@@ -21,6 +22,6 @@ func Get_filename(URL_PATH string) string {
 	} else {
 		return ""
 	}
-
+	fileName = strings.ReplaceAll(fileName,".com",".html")
 	return fileName
 }

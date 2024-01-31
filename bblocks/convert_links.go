@@ -1,7 +1,6 @@
 package bblocks
 
 import (
-	"fmt"
 	"io"
 	"net/url"
 	"regexp"
@@ -31,7 +30,6 @@ func ConvertHTMLLinks(input io.Reader, output io.Writer, baseURL *url.URL) error
 				}
 			}
 		} else if n.Data == "style" {
-			fmt.Println("here")
 			// Convert URLs inside style element
 			cssContent := strings.TrimSpace(getTextContent(n))
 			cssContent = convertURLsInCSS(cssContent, baseURL)

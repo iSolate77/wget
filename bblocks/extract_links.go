@@ -111,7 +111,6 @@ func Crawl(urlw string, baseURL *url.URL, discovered map[string]bool, client *ht
 
 	// Find all matches in the CSS content
 	matches := re.FindAllStringSubmatch(cssContent, -1)
-	fmt.Println(matches)
 	for _, match := range matches {
 		url := match[1] // The URL is captured in the second group
 		if strings.HasPrefix(url, "(") {

@@ -52,15 +52,22 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 				fileName = params["filename"]
 			}
 		}
+		fmt.Println(fileName)
 		contentType := Resp.Header.Get("Content-Type")
 		if strings.HasPrefix(contentType, "text/html") {
-			fileName = "index.html"
+			if fileName == "/" {
+				// DetermineOutputFileName(Resp,urlw)
+				fileName = "index.html"
+			} else {
+				fileName = fileName + ".html"
+
+			}
 		}
 	}
 	// If still no file name, use a default name
-	if fileName == "" {
-		fileName = "downloaded_file"
-	}
+	// if fileName == "" {
+	// 	fileName = "downloaded_file"
+	// }
 
 	// Create directories
 	filePath := path.Join(baseDir, path.Dir(u.Path))
@@ -71,6 +78,10 @@ func DownloadFile(urlw string, client *http.Client, baseDir string) error {
 	}
 
 	// Create file
+	if _, err := os.Stat(fileName); err == nil {
+		fmt.Println("File already exists:", fileName)
+		return nil
+	}
 	OutFile, Any_error := os.Create(path.Join(filePath, fileName))
 	if Any_error != nil {
 		return errors.Wrap(err, "error creating file")

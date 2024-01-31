@@ -67,13 +67,22 @@ func main() {
 			return
 		}
 
-		// Download files
-		discoveredURLs := make([]string, 0, len(discovered))
-
+		// Remove duplicate URLs
+		uniqueDiscovered := make(map[string]bool)
 		for url := range discovered {
+			// Check if the URL is not already in the uniqueDiscovered map
+			if _, ok := uniqueDiscovered[url]; !ok {
+				uniqueDiscovered[url] = true
+			}
+		}
+
+		// Convert unique URLs back to a slice
+		discoveredURLs := make([]string, 0, len(uniqueDiscovered))
+		for url := range uniqueDiscovered {
 			discoveredURLs = append(discoveredURLs, url)
 		}
-		// discoveredURLs = append(discoveredURLs, urlw)
+
+		// Download files
 		for _, url := range discoveredURLs {
 			bblocks.DownloadFile(url, client, hostDir)
 		}
@@ -106,7 +115,7 @@ func main() {
 				go bblocks.DownloadFileWithRateLimitAndProgressBar(link, &wg)
 			}
 			wg.Wait()
-			os.Remove("wget-log.txt")
+			// os.Remove("wget-log.txt")
 		} else {
 			urlPath := flag.Args()
 			for _, link := range urlPath {

@@ -1,0 +1,93 @@
+package main
+
+import (
+	"fmt"
+	"regexp"
+)
+
+func main() {
+	// HTML content with URLs
+	htmlContent := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <style>
+        body { background-color:lightBlue; }
+        #snow{
+            background: none;
+            font-family: Androgyne;
+            background-image: url('/corndog-tile-1.png'), url('/corndog-tile.png'), url('/corndog-tile-2.png');
+            height: 100%;
+            left: 0;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            z-index:1;
+            -webkit-animation: snow 1000s linear infinite;
+            -moz-animation: snow 1000s linear infinite;
+            -ms-animation: snow 1000s linear infinite;
+            animation: snow 1000s linear infinite;
+            -webkit-transform: translate3d(0,0,0);
+            -moz-transform: translate3d(0,0,0);
+            -ms-transform: translate3d(0,0,0);
+            -o-transform: translate3d(0,0,0);
+            transform: translate3d(0,0,0);
+        }
+        @keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-moz-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-webkit-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+        @-ms-keyframes snow {
+          0% {background-position: 0px 0px, 0px 0px, 0px 0px;}
+          100% {background-position: 50000px 50000px, 10000px 20000px, -10000px 15000px;}
+        }
+    </style>
+</head>
+<body>
+    <div id="snow">
+</div>
+</body>
+</html>`
+
+	// Downloaded files map: URL -> Local path
+	downloadedFiles := map[string]string{
+		"/corndog-tile-1.png": "/home/sam/Desktop/wget/corndog.io/corndog-tile-1.png",
+		"/corndog-tile.png":   "/home/sam/Desktop/wget/corndog.io/corndog-tile.png",
+		"/corndog-tile-2.png": "/home/sam/Desktop/wget/corndog.io/corndog-tile-2.png",
+	}
+
+	// Replace URLs with local file paths
+	htmlContentWithLocalPaths := replaceURLsWithLocalPaths(htmlContent, downloadedFiles)
+
+	// Print HTML content with local file paths
+	fmt.Println(htmlContentWithLocalPaths)
+}
+
+func replaceURLsWithLocalPaths(htmlContent string, downloadedFiles map[string]string) string {
+	// Regular expression to match URLs in the HTML content
+	urlRegex := regexp.MustCompile(`url\(['"]?([^'"]*?)['"]?\)`)
+
+	// Replace URLs with local file paths
+	htmlContent = urlRegex.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		// Extract the URL from the match
+		url := urlRegex.FindStringSubmatch(match)[1]
+
+		// Replace the URL with the local file path if available
+		if localPath, ok := downloadedFiles[url]; ok {
+			return fmt.Sprintf("url('%s')", localPath)
+		}
+		return match // Keep the original URL if no local file path is available
+	})
+
+	return htmlContent
+}

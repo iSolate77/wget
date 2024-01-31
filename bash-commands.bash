@@ -4,6 +4,7 @@
 function pause() {
     read -n1 -rsp $'Press any key to continue...\n'
 }
+
 echo "./wget https://pbs.twimg.com/media/EMtmPFLWkAA8CIS.jpg"
 pause
 ./wget https://pbs.twimg.com/media/EMtmPFLWkAA8CIS.jpg
@@ -82,6 +83,7 @@ pause
 pause
 clear
 
+rm -r oct82.com
 echo "./wget --mirror --reject=gif https://oct82.com/"
 pause
 ./wget --mirror --reject=gif https://oct82.com/
@@ -92,7 +94,9 @@ echo "./wget --mirror https://trypap.com/"
 pause
 ./wget --mirror https://trypap.com/
 pause
+rm -r trypap.com
 clear
+
 
 echo "./wget --mirror -X=/img https://trypap.com/"
 pause

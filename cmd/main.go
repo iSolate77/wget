@@ -87,10 +87,10 @@ func main() {
 			bblocks.DownloadFile(url, client, hostDir)
 		}
 		if *bblocks.ConvertMode && strings.HasPrefix(bblocks.Resp.Header.Get("Content-Type"), "text/html") {
-			htmlContent, _ := ioutil.ReadFile("/home/sam/Desktop/wget/corndog.io/index.html")
+			htmlContent, _ := ioutil.ReadFile("corndog.io/index.html")
 			modifiedHTML := bblocks.ConvertURLs(htmlContent)
 			// ConvertHTMLLinks(Resp.Body, File, BaseUrl)
-			err = ioutil.WriteFile("/home/sam/Desktop/wget/corndog.io/index.html", []byte(modifiedHTML), 0644)
+			err = ioutil.WriteFile("corndog.io/index.html", []byte(modifiedHTML), 0644)
 			if err != nil {
 				fmt.Println("Error writing modified HTML file:", err)
 				os.Exit(1)
